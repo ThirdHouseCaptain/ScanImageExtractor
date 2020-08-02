@@ -9,6 +9,9 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
+import os
+import ntpath
+from tqdm import tqdm
 
 def crop_minAreaRect(img, rect):
 
@@ -19,7 +22,7 @@ def crop_minAreaRect(img, rect):
 
     # get row and col num in img
     height, width = img.shape[0], img.shape[1]
-    print("width: {}, height: {}".format(width, height))
+    #print("width: {}, height: {}".format(width, height))
 
     M = cv2.getRotationMatrix2D(center, angle, 1)
     img_rot = cv2.warpAffine(img, M, (width, height))
@@ -30,78 +33,56 @@ def crop_minAreaRect(img, rect):
 
 if __name__ == "__main__":
     
-    input_image = cv2.imread("4.jpg")
-    color_image = input_image.copy()
-    gray_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
-    blurred_image = cv2.GaussianBlur(gray_image, (5,5), 0)
-    ret, threshold_image = cv2.threshold(blurred_image, 215, 255, cv2.THRESH_BINARY_INV)
-    cv2.imwrite("Threshold1.png", threshold_image)
-    kernel= np.ones((9,9),np.uint8)
-    threshold_image = cv2.dilate(threshold_image, kernel, iterations=10)
-    cv2.imwrite("Threshold2.png", threshold_image)
-    threshold_image = cv2.erode(threshold_image, kernel, iterations = 40)
-    cv2.imwrite("Threshold3.png", threshold_image)
-    threshold_image = cv2.dilate(threshold_image, kernel, iterations=26)
+    path = os.getcwd()+"/*.jpg"
     
-    '''
-    cv2.imshow("Image", threshold_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows() 
-    cv2.imwrite("Threshold4.png", threshold_image)
-    '''
+    try:
+        os.mkdir("Extracted_Images")
+    except OSError as error:
+        pass
     
-    contours, hierarchy = cv2.findContours(threshold_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key = cv2.contourArea, reverse=True)
+    for file_path in tqdm(glob.glob(path)):
     
-    selected_contours = []
-    file_number = 1
-    
-    for i in range(10):
+        input_image = cv2.imread(file_path)
+        file_path = ntpath.basename(file_path)
         
-        if(i == len(contours)):
-            break
-
-        #accuracy = 0.01 * cv2.arcLength(contours[i], True)
-        #approx = cv2.approxPolyDP(contours[i], accuracy, True)
+        file_name, file_ext = os.path.splitext(file_path)
         
-        #if(len(approx) == 4):
+        color_image = input_image.copy()
+        
+        gray_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
+        
+        blurred_image = cv2.GaussianBlur(gray_image, (5,5), 0)
+        
+        ret, threshold_image = cv2.threshold(blurred_image, 215, 255, cv2.THRESH_BINARY_INV)
+        #cv2.imwrite("Threshold1.png", threshold_image)
+        
+        kernel= np.ones((9,9),np.uint8)
+        threshold_image = cv2.dilate(threshold_image, kernel, iterations=10)
+        #cv2.imwrite("Threshold2.png", threshold_image)
+        
+        threshold_image = cv2.erode(threshold_image, kernel, iterations = 40)
+        #cv2.imwrite("Threshold3.png", threshold_image)
+        
+        threshold_image = cv2.dilate(threshold_image, kernel, iterations=26)
+        
+       
+        contours, hierarchy = cv2.findContours(threshold_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key = cv2.contourArea, reverse=True)
+        
+        selected_contours = []
+        file_number = 1
+        
+        for i in range(10):
             
-        rect = cv2.minAreaRect(contours[i])
+            if(i == len(contours)):
+                break
+                
+            rect = cv2.minAreaRect(contours[i])
+            split_image = crop_minAreaRect(color_image, rect)
+            split_image = cv2.rotate(split_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            #cv2.imshow("Hello", split_image)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+            cv2.imwrite("Extracted_Images/"+ file_name +"-"+str(file_number)+".png", split_image)
+            file_number += 1
         
-        '''
-        print(rect)
-        
-        box = cv2.boxPoints(rect)
-        print(box)
-        box = np.int0(box)
-        cv2.drawContours(input_image,[box],0,(0,0,255),1)
-        cv2.imshow("temp", input_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        '''
-        
-
-        split_image = crop_minAreaRect(color_image, rect)
-        split_image = cv2.rotate(split_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        '''
-        cv2.imshow("temp", split_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        '''
-        
-        cv2.imwrite("Extrr1"+str(file_number)+".png", split_image)
-        file_number += 1
-        
-        selected_contours.append(contours[i])
-    
-    cv2.drawContours(color_image, selected_contours, -1, (0,255,0), 1)
-    
-    '''
-    cv2.imshow("Image", color_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    '''
-    
-    
-    
-    
